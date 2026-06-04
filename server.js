@@ -51,6 +51,14 @@ app.get("/contact", (req, res) => {
 	res.sendFile(path.join(publicSiteDir, "contact.html"));
 });
 
+app.get("/data-treatment", (req, res) => {
+	res.sendFile(path.join(publicSiteDir, "data-treatment.html"));
+});
+
+app.get("/data-treatment-conditions", (req, res) => {
+	res.sendFile(path.join(publicSiteDir, "data-treatment-conditions.html"));
+});
+
 app.use((error, req, res, next) => {
 	if (error?.type === "entity.too.large") {
 		return res.status(413).json({ message: "La imagen es demasiado pesada. Usa una de máximo 1 MB." });

@@ -3,6 +3,10 @@ const jwt = require("jsonwebtoken");
 const { OAuth2Client } = require("google-auth-library");
 const User = require("../models/User");
 const FcmToken = require("../models/FcmToken");
+const {
+  attachBirthdayToUser,
+  upsertBirthdayForUser
+} = require("../services/userProfileService");
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_change_me";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
@@ -27,13 +31,19 @@ const register = async (req, res) => {
       lastName,
       email,
       phone,
+      birthday,
       password,
+      acceptDataPolicy,
       role,
       addresses = []
     } = req.body;
 
-    if (!firstName || !lastName || !email || !phone || !password) {
-      return res.status(400).json({ message: "firstName, lastName, email, phone y password son obligatorios" });
+    if (!firstName || !lastName || !email || !phone || !password || !birthday) {
+      return res.status(400).json({ message: "firstName, lastName, email, phone, birthday y password son obligatorios" });
+    }
+
+    if (acceptDataPolicy !== true) {
+      return res.status(400).json({ message: "Debes aceptar la política de tratamiento de datos" });
     }
 
     const existingUser = await User.findOne({ $or: [{ email }, { phone }] });
@@ -52,8 +62,15 @@ const register = async (req, res) => {
       addresses
     });
 
+    const birthdayResult = await upsertBirthdayForUser(user._id, birthday);
+    if (birthdayResult.error) {
+      await User.findByIdAndDelete(user._id);
+      return res.status(400).json({ message: birthdayResult.error });
+    }
+
     const token = signToken(user);
-    return res.status(201).json({ token, user: user.toJSON() });
+    const userPayload = await attachBirthdayToUser(user);
+    return res.status(201).json({ token, user: userPayload });
   } catch (error) {
     return res.status(500).json({ message: "Error al registrar usuario", error: error.message });
   }
@@ -82,7 +99,8 @@ const login = async (req, res) => {
     }
 
     const token = signToken(user);
-    return res.status(200).json({ token, user: user.toJSON() });
+    const userPayload = await attachBirthdayToUser(user);
+    return res.status(200).json({ token, user: userPayload });
   } catch (error) {
     return res.status(500).json({ message: "Error al iniciar sesión", error: error.message });
   }
@@ -155,7 +173,8 @@ const googleAuth = async (req, res) => {
     }
 
     const token = signToken(user);
-    return res.status(200).json({ token, user: user.toJSON() });
+    const userPayload = await attachBirthdayToUser(user);
+    return res.status(200).json({ token, user: userPayload });
   } catch (error) {
     return res.status(500).json({ message: "Error al autenticar con Google", error: error.message });
   }
@@ -168,7 +187,8 @@ const me = async (req, res) => {
       return res.status(404).json({ message: "Usuario no encontrado" });
     }
 
-    return res.status(200).json(user.toJSON());
+    const userPayload = await attachBirthdayToUser(user);
+    return res.status(200).json(userPayload);
   } catch (error) {
     return res.status(500).json({ message: "Error obteniendo perfil", error: error.message });
   }

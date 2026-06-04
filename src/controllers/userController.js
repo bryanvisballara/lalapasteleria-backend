@@ -1,4 +1,5 @@
 const User = require("../models/User");
+const { attachBirthdayToUser } = require("../services/userProfileService");
 
 const normalizePhone = (phone = "") => {
   let digits = String(phone).replace(/\D/g, "");
@@ -94,7 +95,8 @@ const updateMe = async (req, res) => {
     currentUser.phone = normalizedPhone;
     await currentUser.save();
 
-    return res.status(200).json(currentUser.toJSON());
+    const userPayload = await attachBirthdayToUser(currentUser);
+    return res.status(200).json(userPayload);
   } catch (error) {
     return res.status(500).json({ message: "Error actualizando perfil", error: error.message });
   }

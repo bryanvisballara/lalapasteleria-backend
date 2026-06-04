@@ -1,9 +1,39 @@
 const Cart = require("../models/Cart");
 const Product = require("../models/Product");
 
-const buildItemKey = (productId, extras = []) => {
+const buildItemKey = (productId, extras = [], selectedSize = null) => {
   const extrasKey = [...extras].sort().join(",");
-  return `${productId}::${extrasKey}`;
+  const sizeKey = selectedSize?.name
+    ? `${selectedSize.name}::${Number(selectedSize.price || 0)}`
+    : "no-size";
+  return `${productId}::${extrasKey}::${sizeKey}`;
+};
+
+const normalizeSelectedSize = (rawSelectedSize, product) => {
+  const hasSizes = Array.isArray(product?.sizes) && product.sizes.length > 0;
+
+  if (!hasSizes) {
+    return null;
+  }
+
+  const name = typeof rawSelectedSize?.name === "string" ? rawSelectedSize.name.trim() : "";
+  const price = Number(rawSelectedSize?.price);
+
+  if (!name || !Number.isFinite(price)) {
+    throw new Error(`Debes seleccionar un tamaño válido para el producto: ${product._id}`);
+  }
+
+  const matched = product.sizes.find((size) => size.name === name && Number(size.price) === price)
+    || product.sizes.find((size) => size.name === name);
+
+  if (!matched) {
+    throw new Error(`Tamaño inválido para producto: ${product._id}`);
+  }
+
+  return {
+    name: matched.name,
+    price: Number(matched.price)
+  };
 };
 
 const toPayload = async (cart) => {
@@ -39,8 +69,11 @@ const normalizeItems = async (incomingItems) => {
     const extras = Array.isArray(item.extras) ? item.extras : [];
     return [...base, ...extras];
   });
-  const products = await Product.find({ _id: { $in: productIds }, available: true }).select("_id").lean();
-  const validProductIds = new Set(products.map((product) => product._id.toString()));
+  const products = await Product.find({ _id: { $in: productIds }, available: true })
+    .select("_id hasSizes sizes")
+    .lean();
+  const productById = new Map(products.map((product) => [product._id.toString(), product]));
+  const validProductIds = new Set(productById.keys());
 
   const mergedByProduct = new Map();
 
@@ -56,6 +89,8 @@ const normalizeItems = async (incomingItems) => {
       throw new Error(`Producto inválido o no disponible: ${productId}`);
     }
 
+    const product = productById.get(productId);
+
     extras.forEach((extraId) => {
       if (!validProductIds.has(extraId)) {
         throw new Error(`Extra inválido o no disponible: ${extraId}`);
@@ -66,7 +101,9 @@ const normalizeItems = async (incomingItems) => {
       throw new Error(`Cantidad inválida para producto: ${productId}`);
     }
 
-    const key = buildItemKey(productId, extras);
+    const selectedSize = normalizeSelectedSize(item.selectedSize, product);
+
+    const key = buildItemKey(productId, extras, selectedSize);
     const current = mergedByProduct.get(key);
 
     if (current) {
@@ -77,7 +114,8 @@ const normalizeItems = async (incomingItems) => {
     mergedByProduct.set(key, {
       product: productId,
       quantity,
-      extras
+      extras,
+      selectedSize
     });
   });
 
@@ -106,19 +144,32 @@ const syncCart = async (req, res) => {
       const currentByProduct = new Map((cart.items || []).map((item) => {
         const productId = String(item.product);
         const extras = Array.isArray(item.extras) ? item.extras.map((extraId) => String(extraId)).sort() : [];
-        const key = buildItemKey(productId, extras);
+        const selectedSize = item.selectedSize && item.selectedSize.name
+          ? {
+            name: item.selectedSize.name,
+            price: Number(item.selectedSize.price || 0)
+          }
+          : null;
+        const key = buildItemKey(productId, extras, selectedSize);
 
         return [key, {
           product: productId,
           quantity: Number(item.quantity || 0),
-          extras
+          extras,
+          selectedSize
         }];
       }));
 
       normalizedIncoming.forEach((item) => {
         const productId = String(item.product);
         const extras = Array.isArray(item.extras) ? item.extras.map((extraId) => String(extraId)).sort() : [];
-        const key = buildItemKey(productId, extras);
+        const selectedSize = item.selectedSize && item.selectedSize.name
+          ? {
+            name: item.selectedSize.name,
+            price: Number(item.selectedSize.price || 0)
+          }
+          : null;
+        const key = buildItemKey(productId, extras, selectedSize);
         const current = currentByProduct.get(key);
 
         if (current) {
@@ -129,7 +180,8 @@ const syncCart = async (req, res) => {
         currentByProduct.set(key, {
           product: productId,
           quantity: item.quantity,
-          extras
+          extras,
+          selectedSize
         });
       });
 
@@ -138,7 +190,8 @@ const syncCart = async (req, res) => {
         .map((item) => ({
           product: item.product,
           quantity: item.quantity,
-          extras: item.extras
+          extras: item.extras,
+          selectedSize: item.selectedSize
         }));
     }
 

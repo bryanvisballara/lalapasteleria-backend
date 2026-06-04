@@ -20,6 +20,19 @@ const cartItemSchema = new mongoose.Schema(
         }
       ],
       default: []
+    },
+    selectedSize: {
+      type: {
+        name: {
+          type: String,
+          trim: true
+        },
+        price: {
+          type: Number,
+          min: 0
+        }
+      },
+      default: null
     }
   },
   { _id: false }

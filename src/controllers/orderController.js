@@ -28,6 +28,33 @@ const STATUS_PUSH_MESSAGES = {
   }
 };
 
+const normalizeSelectedSize = (rawSelectedSize, product) => {
+  const hasSizes = Array.isArray(product?.sizes) && product.sizes.length > 0;
+
+  if (!hasSizes) {
+    return null;
+  }
+
+  const name = typeof rawSelectedSize?.name === "string" ? rawSelectedSize.name.trim() : "";
+  const price = Number(rawSelectedSize?.price);
+
+  if (!name || !Number.isFinite(price)) {
+    throw new Error(`Debes seleccionar un tamaño válido para el producto: ${product._id}`);
+  }
+
+  const matched = product.sizes.find((size) => size.name === name && Number(size.price) === price)
+    || product.sizes.find((size) => size.name === name);
+
+  if (!matched) {
+    throw new Error(`Tamaño inválido para producto: ${product._id}`);
+  }
+
+  return {
+    name: matched.name,
+    price: Number(matched.price)
+  };
+};
+
 const createOrder = async (req, res) => {
   try {
     const { items, addressId, paymentMethod, customerComment, cashPaymentAmount } = req.body;
@@ -90,7 +117,8 @@ const createOrder = async (req, res) => {
         throw new Error(`Cantidad inválida para producto: ${item.productId}`);
       }
 
-      const unitPrice = product.price;
+      const selectedSize = normalizeSelectedSize(item.selectedSize, product);
+      const unitPrice = selectedSize ? Number(selectedSize.price) : Number(product.price || 0);
       const normalizedExtras = extrasIds.map((extraId) => {
         const extraProduct = productsMap.get(extraId);
 
@@ -112,6 +140,7 @@ const createOrder = async (req, res) => {
         product: product._id,
         quantity,
         price: unitPrice,
+        selectedSize,
         extras: normalizedExtras
       };
     });

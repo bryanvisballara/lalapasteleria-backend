@@ -2,6 +2,7 @@
   "scripts": {
     "start": "node server.js",
     "seed": "node src/seeds/seed.js",
+    "check:mongo": "node scripts/check-mongo.js",
     "test:realtime": "node src/tests/realtime-e2e.js"
   },
   "dependencies": {

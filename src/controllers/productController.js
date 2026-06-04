@@ -1,6 +1,26 @@
 const Product = require("../models/Product");
 const Category = require("../models/Category");
 
+const normalizeSizesPayload = (payload = {}) => {
+  const hasSizesFlag = payload.hasSizes === true || payload.hasSizes === "true";
+  const rawSizes = Array.isArray(payload.sizes) ? payload.sizes : [];
+
+  const sizes = rawSizes
+    .map((size) => ({
+      name: typeof size?.name === "string" ? size.name.trim() : "",
+      price: Number(size?.price)
+    }))
+    .filter((size) => size.name && Number.isFinite(size.price) && size.price >= 0);
+
+  const hasSizes = hasSizesFlag || sizes.length > 0;
+
+  if (!hasSizes) {
+    return { hasSizes: false, sizes: [] };
+  }
+
+  return { hasSizes: true, sizes };
+};
+
 const createProduct = async (req, res) => {
   try {
     const { category } = req.body;
@@ -10,7 +30,24 @@ const createProduct = async (req, res) => {
       return res.status(400).json({ message: "La categoría no existe" });
     }
 
-    const product = await Product.create(req.body);
+    const payload = { ...req.body };
+    const shouldNormalizeSizes = req.body.hasSizes !== undefined || req.body.sizes !== undefined;
+
+    if (shouldNormalizeSizes) {
+      const { hasSizes, sizes } = normalizeSizesPayload(req.body);
+      if (hasSizes && sizes.length === 0) {
+        return res.status(400).json({ message: "Debes agregar al menos un tamaño válido" });
+      }
+
+      const normalizedPrice = Number(req.body.price);
+      const fallbackPrice = Number.isFinite(normalizedPrice) ? normalizedPrice : 0;
+
+      payload.hasSizes = hasSizes;
+      payload.sizes = sizes;
+      payload.price = hasSizes ? sizes[0].price : fallbackPrice;
+    }
+
+    const product = await Product.create(payload);
     return res.status(201).json(product);
   } catch (error) {
     return res.status(500).json({ message: "Error creando producto", error: error.message });
@@ -66,7 +103,24 @@ const updateProduct = async (req, res) => {
       }
     }
 
-    const product = await Product.findByIdAndUpdate(req.params.id, req.body, {
+    const payload = { ...req.body };
+    const shouldNormalizeSizes = req.body.hasSizes !== undefined || req.body.sizes !== undefined;
+
+    if (shouldNormalizeSizes) {
+      const { hasSizes, sizes } = normalizeSizesPayload(req.body);
+      if (hasSizes && sizes.length === 0) {
+        return res.status(400).json({ message: "Debes agregar al menos un tamaño válido" });
+      }
+
+      const normalizedPrice = Number(req.body.price);
+      const fallbackPrice = Number.isFinite(normalizedPrice) ? normalizedPrice : 0;
+
+      payload.hasSizes = hasSizes;
+      payload.sizes = sizes;
+      payload.price = hasSizes ? sizes[0].price : fallbackPrice;
+    }
+
+    const product = await Product.findByIdAndUpdate(req.params.id, payload, {
       new: true,
       runValidators: true
     }).populate("category");
