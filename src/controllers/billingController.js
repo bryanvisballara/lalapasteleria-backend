@@ -48,6 +48,26 @@ const normalizeItems = (items = []) => {
     .filter((item) => item.description && Number.isFinite(item.quantity) && item.quantity > 0);
 };
 
+const normalizeInspirationImage = (raw = null) => {
+  if (!raw || typeof raw !== "object") {
+    return undefined;
+  }
+
+  const data = typeof raw.data === "string" ? raw.data.trim() : "";
+  const mimeType = typeof raw.mimeType === "string" ? raw.mimeType.trim() : "";
+  const fileName = typeof raw.fileName === "string" ? raw.fileName.trim() : "";
+
+  if (!data || !mimeType.startsWith("image/")) {
+    return undefined;
+  }
+
+  if (data.length > 6_000_000) {
+    return undefined;
+  }
+
+  return { data, mimeType, fileName };
+};
+
 const listInternalSales = async (req, res) => {
   try {
     const day = parseDateParam(req.query.date);
@@ -106,12 +126,15 @@ const createInternalSale = async (req, res) => {
       ? parseDateParam(req.body.saleDate)
       : startOfDay(new Date());
 
+    const inspirationImage = normalizeInspirationImage(req.body.inspirationImage);
+
     const sale = await InternalSale.create({
       saleDate,
       customerName: req.body.customerName || "",
       items,
       additionalCosts: Number(req.body.additionalCosts) || 0,
       notes: req.body.notes || "",
+      ...(inspirationImage ? { inspirationImage } : {}),
       createdBy: req.user?._id
     });
 

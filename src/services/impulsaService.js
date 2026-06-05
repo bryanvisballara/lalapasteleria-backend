@@ -1,4 +1,4 @@
-const IMPULSA_WINDOW_DAYS = 5;
+const IMPULSA_WINDOW_DAYS = 14;
 const CONTACTED_VISIBLE_DAYS = 5;
 /** Días entre registro y fecha de torta: si es menor, es cotización reciente (no IMPULSA). */
 const FRESH_QUOTE_MAX_DAYS_BEFORE_NEEDED = 14;

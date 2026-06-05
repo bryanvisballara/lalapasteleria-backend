@@ -50,6 +50,22 @@ const internalSaleSchema = new mongoose.Schema({
     trim: true,
     default: ""
   },
+  inspirationImage: {
+    fileName: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+    mimeType: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+    data: {
+      type: String,
+      default: ""
+    }
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User"
