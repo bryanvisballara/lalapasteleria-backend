@@ -1,4 +1,6 @@
 const express = require("express");
+const mongoose = require("mongoose");
+const CustomerInquiry = require("../models/CustomerInquiry");
 const { protect, authorize } = require("../middleware/authMiddleware");
 const { requireDatabase } = require("../middleware/dbMiddleware");
 const {
@@ -42,6 +44,19 @@ const {
 } = require("../controllers/accountingController");
 
 const router = express.Router();
+
+router.get("/health/summary", protect, authorize("admin"), requireDatabase, async (req, res) => {
+	try {
+		const customerInquiries = await CustomerInquiry.countDocuments();
+
+		return res.status(200).json({
+			database: mongoose.connection.name,
+			customerInquiries
+		});
+	} catch (error) {
+		return res.status(500).json({ message: "No se pudo leer el resumen de la base de datos", error: error.message });
+	}
+});
 
 router.get("/public-config", getPublicRestaurantConfig);
 router.get("/restaurant-config", protect, authorize("admin"), requireDatabase, getRestaurantConfig);

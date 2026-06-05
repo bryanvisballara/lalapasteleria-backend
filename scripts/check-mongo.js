@@ -17,14 +17,26 @@ const run = async () => {
 
   await mongoose.connect(uri, { serverSelectionTimeoutMS: 20000 });
   const collections = await mongoose.connection.db.listCollections().toArray();
+  const customerInquiries = collections.some((item) => item.name === "customerinquiries")
+    ? await mongoose.connection.db.collection("customerinquiries").countDocuments()
+    : 0;
+  const users = collections.some((item) => item.name === "users")
+    ? await mongoose.connection.db.collection("users").countDocuments()
+    : 0;
 
   console.log("✅ MongoDB conectado");
   console.log(`Base de datos: ${mongoose.connection.name}`);
+  console.log(`Usuarios: ${users}`);
+  console.log(`Clientes (customerinquiries): ${customerInquiries}`);
   console.log(
     collections.length
       ? `Colecciones: ${collections.map((item) => item.name).join(", ")}`
       : "Colecciones: (ninguna todavía — ejecuta npm run seed)"
   );
+
+  if (!String(uri).includes("/lalapasteleria")) {
+    console.warn("⚠️  La URI no termina en /lalapasteleria. Render podría estar leyendo otra base distinta a la de tu entorno local.");
+  }
 };
 
 run()

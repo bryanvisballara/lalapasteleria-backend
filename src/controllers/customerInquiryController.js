@@ -61,7 +61,7 @@ const createCustomerInquiry = async (req, res) => {
 
     const inquiry = await CustomerInquiry.create({
       ...normalized,
-      createdBy: req.user?._id
+      createdBy: req.user?.id || req.user?._id
     });
 
     await inquiry.populate("createdBy", "firstName lastName email");

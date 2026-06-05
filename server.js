@@ -15,6 +15,7 @@ const adminRoutes = require("./src/routes/adminRoutes");
 const cartRoutes = require("./src/routes/cartRoutes");
 const userRoutes = require("./src/routes/userRoutes");
 const { ensurePortalUsers } = require("./src/services/portalUserService");
+const CustomerInquiry = require("./src/models/CustomerInquiry");
 
 dns.setServers(["8.8.8.8", "1.1.1.1"]);
 
@@ -46,8 +47,10 @@ const connectMongo = async () => {
 		await mongoose.connect(process.env.MONGO_URI, {
 			serverSelectionTimeoutMS: 15000
 		});
-		console.log("✅ MongoDB conectado");
+		console.log(`✅ MongoDB conectado (${mongoose.connection.name})`);
 		await ensurePortalUsers();
+		const customerInquiryCount = await CustomerInquiry.countDocuments();
+		console.log(`📋 Registros en customerinquiries: ${customerInquiryCount}`);
 	} catch (err) {
 		console.log("❌ Error MongoDB:", err.message);
 	}
