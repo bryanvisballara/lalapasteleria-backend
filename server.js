@@ -14,6 +14,7 @@ const orderRoutes = require("./src/routes/orderRoutes");
 const adminRoutes = require("./src/routes/adminRoutes");
 const cartRoutes = require("./src/routes/cartRoutes");
 const userRoutes = require("./src/routes/userRoutes");
+const { ensurePortalUsers } = require("./src/services/portalUserService");
 
 dns.setServers(["8.8.8.8", "1.1.1.1"]);
 
@@ -35,9 +36,24 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/users", userRoutes);
 
-mongoose.connect(process.env.MONGO_URI)
-	.then(() => console.log("✅ MongoDB conectado"))
-	.catch(err => console.log("❌ Error MongoDB:", err));
+const connectMongo = async () => {
+	if (!process.env.MONGO_URI) {
+		console.log("❌ MONGO_URI no está definido en .env");
+		return;
+	}
+
+	try {
+		await mongoose.connect(process.env.MONGO_URI, {
+			serverSelectionTimeoutMS: 15000
+		});
+		console.log("✅ MongoDB conectado");
+		await ensurePortalUsers();
+	} catch (err) {
+		console.log("❌ Error MongoDB:", err.message);
+	}
+};
+
+connectMongo();
 
 app.get("/", (req, res) => {
 	res.sendFile(path.join(publicSiteDir, "index.html"));
