@@ -8,13 +8,10 @@ const {
   getMonthRange,
   buildAccountingOverview
 } = require("../services/accountingService");
+const { parseCalendarDateInput } = require("../utils/calendarDate");
 
 const normalizeExpensePayload = (body = {}) => {
-  let expenseDate = body.expenseDate ? new Date(body.expenseDate) : new Date();
-
-  if (Number.isNaN(expenseDate.getTime())) {
-    expenseDate = new Date();
-  }
+  const expenseDate = parseCalendarDateInput(body.expenseDate);
 
   return {
     category: EXPENSE_CATEGORIES.includes(body.category) ? body.category : "otros",

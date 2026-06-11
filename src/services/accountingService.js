@@ -2,30 +2,23 @@ const InternalSale = require("../models/InternalSale");
 const Order = require("../models/Order");
 const OperatingExpense = require("../models/OperatingExpense");
 const { calculateSaleTotals } = require("./recipeCostService");
+const { getColombiaYearMonth, getMonthRangeInColombia } = require("../utils/calendarDate");
 
 const roundMoney = (value) => Number(Number(value || 0).toFixed(2));
 
 const parseMonthParam = (yearRaw, monthRaw) => {
-  const now = new Date();
-  const year = Number(yearRaw) || now.getFullYear();
-  const month = Number(monthRaw) || now.getMonth() + 1;
+  const colombiaNow = getColombiaYearMonth();
+  const year = Number(yearRaw) || colombiaNow.year;
+  const month = Number(monthRaw) || colombiaNow.month;
 
   if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) {
-    return {
-      year: now.getFullYear(),
-      month: now.getMonth() + 1
-    };
+    return colombiaNow;
   }
 
   return { year, month };
 };
 
-const getMonthRange = (year, month) => {
-  const start = new Date(year, month - 1, 1, 0, 0, 0, 0);
-  const end = new Date(year, month, 0, 23, 59, 59, 999);
-
-  return { start, end };
-};
+const getMonthRange = (year, month) => getMonthRangeInColombia(year, month);
 
 const buildCategoryTotals = (expenses = []) => {
   return expenses.reduce((accumulator, expense) => {

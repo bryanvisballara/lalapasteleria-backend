@@ -7,6 +7,11 @@ import {
   updateOperatingExpense
 } from "../api/admin";
 import { MONEY } from "../utils/printComanda";
+import {
+  formatCalendarDateColombia,
+  getColombiaTodayInputValue,
+  toCalendarDateInputValue
+} from "../utils/calendarDate";
 
 const EXPENSE_CATEGORIES = [
   { key: "nomina", label: "Nómina", hint: "Salarios y pagos a empleados", emoji: "👥" },
@@ -33,20 +38,12 @@ const MONTH_LABELS = [
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
 ];
 
-const toDateInputValue = (dateValue = new Date()) => {
-  const date = new Date(dateValue);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
 const emptyExpenseForm = {
   id: "",
   category: "nomina",
   description: "",
   amount: "",
-  expenseDate: toDateInputValue(),
+  expenseDate: getColombiaTodayInputValue(),
   paymentMethod: "efectivo",
   vendor: "",
   notes: ""
@@ -56,10 +53,39 @@ const getCategoryMeta = (categoryKey) => {
   return EXPENSE_CATEGORIES.find((item) => item.key === categoryKey) || EXPENSE_CATEGORIES.at(-1);
 };
 
+function PencilIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M18 6 6 18M6 6l12 12"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export default function AccountingPanel({ onError, onSuccess }) {
-  const now = new Date();
-  const [selectedYear, setSelectedYear] = useState(String(now.getFullYear()));
-  const [selectedMonth, setSelectedMonth] = useState(String(now.getMonth() + 1));
+  const colombiaToday = getColombiaTodayInputValue();
+  const [colombiaYear, colombiaMonth] = colombiaToday.split("-");
+  const [selectedYear, setSelectedYear] = useState(colombiaYear);
+  const [selectedMonth, setSelectedMonth] = useState(String(Number(colombiaMonth)));
   const [activeView, setActiveView] = useState("overview");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -135,7 +161,7 @@ export default function AccountingPanel({ onError, onSuccess }) {
         onSuccess("Gasto registrado");
       }
 
-      setForm({ ...emptyExpenseForm, expenseDate: toDateInputValue() });
+      setForm({ ...emptyExpenseForm, expenseDate: getColombiaTodayInputValue() });
       await loadAccounting();
       setActiveView("history");
     } catch (submitError) {
@@ -151,7 +177,7 @@ export default function AccountingPanel({ onError, onSuccess }) {
       category: expense.category,
       description: expense.description,
       amount: String(expense.amount),
-      expenseDate: toDateInputValue(expense.expenseDate),
+      expenseDate: toCalendarDateInputValue(expense.expenseDate),
       paymentMethod: expense.paymentMethod || "efectivo",
       vendor: expense.vendor || "",
       notes: expense.notes || ""
@@ -236,7 +262,7 @@ export default function AccountingPanel({ onError, onSuccess }) {
           onClick={() => {
             setActiveView("register");
             if (!form.id) {
-              setForm({ ...emptyExpenseForm, expenseDate: toDateInputValue() });
+              setForm({ ...emptyExpenseForm, expenseDate: getColombiaTodayInputValue() });
             }
           }}
         >
@@ -325,7 +351,7 @@ export default function AccountingPanel({ onError, onSuccess }) {
                         <div>
                           <strong>{category.emoji} {expense.description}</strong>
                           <p className="muted">
-                            {category.label} · {new Date(expense.expenseDate).toLocaleDateString("es-CO")}
+                            {category.label} · {formatCalendarDateColombia(expense.expenseDate)}
                           </p>
                         </div>
                         <strong>{MONEY.format(expense.amount)}</strong>
@@ -436,7 +462,7 @@ export default function AccountingPanel({ onError, onSuccess }) {
               {form.id ? (
                 <button
                   type="button"
-                  onClick={() => setForm({ ...emptyExpenseForm, expenseDate: toDateInputValue() })}
+                  onClick={() => setForm({ ...emptyExpenseForm, expenseDate: getColombiaTodayInputValue() })}
                 >
                   Cancelar edición
                 </button>
@@ -485,7 +511,7 @@ export default function AccountingPanel({ onError, onSuccess }) {
 
                     return (
                       <tr key={expense._id}>
-                        <td>{new Date(expense.expenseDate).toLocaleDateString("es-CO")}</td>
+                        <td>{formatCalendarDateColombia(expense.expenseDate)}</td>
                         <td>{category.emoji} {category.label}</td>
                         <td>{expense.description}</td>
                         <td>{expense.vendor || "—"}</td>
@@ -497,15 +523,19 @@ export default function AccountingPanel({ onError, onSuccess }) {
                               type="button"
                               className="table-icon-btn edit"
                               onClick={() => handleEditExpense(expense)}
+                              title="Editar"
+                              aria-label={`Editar gasto ${expense.description}`}
                             >
-                              Editar
+                              <PencilIcon />
                             </button>
                             <button
                               type="button"
                               className="table-icon-btn delete"
                               onClick={() => handleDeleteExpense(expense._id)}
+                              title="Eliminar"
+                              aria-label={`Eliminar gasto ${expense.description}`}
                             >
-                              X
+                              <CloseIcon />
                             </button>
                           </div>
                         </td>
